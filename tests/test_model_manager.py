@@ -49,8 +49,8 @@ class TestModelManager:
                 "description": "Advanced AI model",
                 "pricing": {"prompt": 0.000015, "completion": 0.000075},
                 "context_length": 200000,
-                "architecture": "transformer",
-                "top_provider": "Anthropic",
+                "architecture": {"modality": "text->text", "instruct_type": "claude"},
+                "top_provider": {"context_length": 200000, "is_moderated": False},
                 "supports_tools": True,
                 "supports_streaming": True
             },
@@ -60,8 +60,8 @@ class TestModelManager:
                 "description": "OpenAI's flagship model",
                 "pricing": {"prompt": 0.00005, "completion": 0.00015},
                 "context_length": 128000,
-                "architecture": "transformer",
-                "top_provider": "OpenAI",
+                "architecture": {"modality": "text->text", "instruct_type": "openai"},
+                "top_provider": {"context_length": 128000, "is_moderated": False},
                 "supports_tools": True,
                 "supports_streaming": True
             },
@@ -71,8 +71,8 @@ class TestModelManager:
                 "description": "Meta's open source model",
                 "pricing": {"prompt": 0.0, "completion": 0.0},
                 "context_length": 8000,
-                "architecture": "llama",
-                "top_provider": "Meta",
+                "architecture": {"modality": "text->text", "instruct_type": "llama"},
+                "top_provider": {"context_length": 8000, "is_moderated": False},
                 "supports_tools": False,
                 "supports_streaming": True
             }

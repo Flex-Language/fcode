@@ -7,7 +7,7 @@ as specified in CLAUDE.md requirements.
 
 import os
 from typing import Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
@@ -34,7 +34,8 @@ class OpenRouterSettings(BaseModel):
         description="Application title for OpenRouter requests"
     )
     
-    @validator('api_key')
+    @field_validator('api_key')
+    @classmethod
     def validate_api_key(cls, v):
         """Validate OpenRouter API key."""
         if not v or v.strip() == "":
@@ -101,14 +102,16 @@ class Settings(BaseSettings):
     flex: FlexSettings = Field(default_factory=FlexSettings)
     app: ApplicationSettings = Field(default_factory=ApplicationSettings)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        env_nested_delimiter = "__"
-        extra = "ignore"  # Allow extra fields in .env
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+        "env_nested_delimiter": "__",
+        "extra": "ignore"  # Allow extra fields in .env
+    }
     
-    @validator('openrouter', pre=True)
+    @field_validator('openrouter', mode='before')
+    @classmethod
     def validate_openrouter(cls, v):
         """Validate OpenRouter configuration."""
         if isinstance(v, dict):

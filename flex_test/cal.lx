@@ -1,0 +1,39 @@
+// Simple calculator program in Flex (English syntax)
+
+yalla
+    etb3("Simple Calculator")
+
+    // Prompt for first number
+    etb3("Enter the first number:")
+    rakm num1
+    yod num1
+
+    // Prompt for second number
+    etb3("Enter the second number:")
+    rakm num2
+    yod num2
+
+    // Prompt for operation
+    etb3("Choose an operation (+, -, *, /):")
+    rakm operation
+    yod operation
+
+    lw operation == "+"
+        rakm result = num1 + num2
+        etb3("Result: " + result)
+    elif operation == "-"
+        rakm result = num1 - num2
+        etb3("Result: " + result)
+    elif operation == "*"
+        rakm result = num1 * num2
+        etb3("Result: " + result)
+    elif operation == "/"
+        lw num2 == 0
+            etb3("Error: Division by zero is not allowed.")
+        else
+            rakm result = num1 / num2
+            etb3("Result: " + result)
+    else
+        etb3("Invalid operation selected.")
+    safi
+yalla

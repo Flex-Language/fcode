@@ -5,7 +5,7 @@ This module contains Pydantic models for type safety and validation across
 the entire application, including OpenRouter integration and Flex code handling.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import datetime
@@ -42,7 +42,8 @@ class FlexCodeRequest(BaseModel):
         description="OpenRouter model ID to use"
     )
     
-    @validator('prompt')
+    @field_validator('prompt')
+    @classmethod
     def validate_prompt(cls, v):
         """Validate prompt is not empty."""
         if not v or v.strip() == "":
@@ -73,7 +74,8 @@ class FlexCodeResponse(BaseModel):
         description="Code warnings or safety notes"
     )
     
-    @validator('code')
+    @field_validator('code')
+    @classmethod
     def validate_code(cls, v):
         """Validate generated code is not empty."""
         if not v or v.strip() == "":
@@ -127,7 +129,8 @@ class OpenRouterModel(BaseModel):
         description="Supports streaming responses"
     )
     
-    @validator('id')
+    @field_validator('id')
+    @classmethod
     def validate_id(cls, v):
         """Validate model ID format."""
         if not v or "/" not in v:
@@ -213,7 +216,8 @@ class FlexExecutionRequest(BaseModel):
         description="Execution timeout in seconds"
     )
     
-    @validator('code')
+    @field_validator('code')
+    @classmethod
     def validate_code(cls, v):
         """Validate code is not empty."""
         if not v or v.strip() == "":
@@ -366,7 +370,8 @@ class FileOperation(BaseModel):
         description="Create backup before write/delete"
     )
     
-    @validator('operation')
+    @field_validator('operation')
+    @classmethod
     def validate_operation(cls, v):
         """Validate operation type."""
         valid_operations = ['read', 'write', 'delete', 'exists', 'list']

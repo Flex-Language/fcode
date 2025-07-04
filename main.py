@@ -283,7 +283,11 @@ async def main() -> None:
             await cli_main()
     
     except KeyboardInterrupt:
-        print("\n👋 Goodbye!")
+        # Clean exit - no error message needed since CLI handles it
+        pass
+    except asyncio.CancelledError:
+        # Clean exit for cancelled async operations
+        pass
     except Exception as e:
         print(f"❌ Fatal error: {e}")
         if args.debug:
@@ -307,4 +311,14 @@ if __name__ == "__main__":
         print("Copy .env.example to .env and fill in your OpenRouter API key.")
         sys.exit(1)
     
-    asyncio.run(main())
+    # Run with proper cancellation handling
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # Clean exit for Ctrl+C
+        pass
+    except asyncio.CancelledError:
+        # Clean exit for cancelled operations
+        pass
+    except SystemExit:
+        pass  # Let system exits pass through normally

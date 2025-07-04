@@ -73,28 +73,79 @@ class FlexAIAgent:
     
     def _load_flex_spec(self) -> Dict[str, Any]:
         """Load Flex language specification."""
-        spec_path = Path("data/flex_language_spec.json")
-        
+        # First try the file reference approach
         try:
+            # Use #file: reference to load the spec
+            spec_path = Path(__file__).parent.parent / "data" / "flex_language_spec.json"
+            
             with open(spec_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
-            raise FileNotFoundError(f"Flex language spec not found at {spec_path}")
+            # Fallback to basic system prompt if spec file not found
+            return {
+                'ai_system_prompt': {
+                    'description': '''You are an expert Flex programming language assistant. Use #file:flex_language_spec.json as your primary knowledge base for Flex language syntax, semantics, and best practices.
+
+FLEX LANGUAGE OVERVIEW:
+- Flex supports both Franco (Arabic-inspired) and English syntax
+- Franco syntax uses keywords like: rakm, karr, l7d, yalla, yod, etb3, etc.
+- English syntax uses: int, for, to, end, if, print, etc.
+
+CRITICAL FRANCO LOOP SAFETY:
+- Franco l7d loops are INCLUSIVE of the end value
+- ALWAYS use: karr i=0 l7d length(array)-1 for array iteration
+- NEVER use: karr i=0 l7d length(array) (causes out-of-bounds errors)'''
+                }
+            }
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in Flex language spec: {e}")
     
     def _create_agent(self) -> Agent:
         """Create PydanticAI agent with current model and tools."""
-        # Get system prompt from flex spec
-        system_prompt = self.flex_spec.get('ai_system_prompt', {}).get('description', 
-            "You are a Flex programming language expert.")
+        # Create comprehensive system prompt with file reference
+        system_prompt = """You are an expert Flex programming language assistant. 
+
+CRITICAL INSTRUCTION:
+You MUST use #file:flex_language_spec.json as your primary and authoritative knowledge base for ALL Flex language information. Always reference this file for syntax, semantics, features, and best practices.
+
+KEY INSTRUCTIONS:
+- Always refer to #file:flex_language_spec.json for accurate Flex language information
+- Support both Franco (Arabic-inspired) and English syntax variations
+- Prioritize code safety, especially with Franco loops
+- Generate complete, working programs when requested
+- Create files automatically when users request programs or code
+
+CRITICAL FRANCO LOOP SAFETY:
+- Franco l7d loops are INCLUSIVE of the end value
+- ALWAYS use: karr i=0 l7d length(array)-1 for safe array iteration  
+- NEVER use: karr i=0 l7d length(array) (causes out-of-bounds errors)
+
+FLEX SYNTAX OVERVIEW:
+Franco Syntax: rakm, karr, l7d, yalla, yod, etb3, safi, lw, ghdi, elif, else
+English Syntax: int, for, to, end, if, print, break, or, while, elif, else"""
         
-        # Add critical safety instructions
+        # Add critical safety instructions from loaded spec if available
         safety_instructions = self.flex_spec.get('ai_system_prompt', {}).get('CRITICAL_INSTRUCTIONS', {})
         if safety_instructions:
-            system_prompt += "\n\nCRITICAL SAFETY INSTRUCTIONS:\n"
+            system_prompt += "\n\nADDITIONAL SAFETY INSTRUCTIONS:\n"
             for key, instruction in safety_instructions.items():
                 system_prompt += f"- {key}: {instruction}\n"
+        
+        # Add file creation capabilities information
+        system_prompt += """
+
+AVAILABLE TOOLS:
+- create_file: Create any file with specified content
+- create_flex_program_file: Generate and create complete Flex programs from descriptions
+- generate_flex_code: Generate Flex code snippets
+- execute_flex_code: Run and test Flex code
+- validate_flex_code: Check code for errors
+
+WHEN USER ASKS TO CREATE FILES:
+- Use create_file for general file creation with provided content
+- Use create_flex_program_file for generating complete Flex programs (like games, calculators, etc.)
+- Always provide the generated code content when creating files
+- Confirm successful file creation with file details"""
         
         # Create agent with current model
         agent = create_flex_agent(
@@ -469,6 +520,129 @@ print("Hello, " + name + "!")
 """
             
             return response
+        
+        @agent.tool
+        async def create_file(
+            ctx: RunContext[AgentDependencies],
+            filename: str,
+            content: str,
+            overwrite: bool = False
+        ) -> str:
+            """
+            Create a new file with the specified content.
+            
+            Args:
+                filename: Name of the file to create (e.g., 'xo_game.lx', 'calculator.flex')
+                content: Content to write to the file
+                overwrite: Whether to overwrite existing file (default: False)
+                
+            Returns:
+                Result message indicating success or failure
+            """
+            from pathlib import Path
+            from tools.file_manager import FileOperation
+            
+            try:
+                # Check if file exists and overwrite is False
+                if not overwrite and Path(filename).exists():
+                    return f"❌ File '{filename}' already exists. Use overwrite=True to replace it, or choose a different filename."
+                
+                # Create the file using the file manager
+                write_op = FileOperation(
+                    operation="write",
+                    filepath=filename,
+                    content=content,
+                    backup=not overwrite  # Only backup if not overwriting
+                )
+                
+                result = await ctx.deps.file_manager.execute_operation(write_op)
+                
+                if result.success:
+                    size_info = f" ({result.file_size} bytes)" if hasattr(result, 'file_size') and result.file_size else ""
+                    return f"✅ Successfully created file: {filename}{size_info}\n\nFile contents:\n```\n{content[:200]}{'...' if len(content) > 200 else ''}\n```"
+                else:
+                    return f"❌ Failed to create file '{filename}': {result.message}"
+                    
+            except Exception as e:
+                return f"❌ Error creating file '{filename}': {str(e)}"
+        
+        @agent.tool  
+        async def create_flex_program_file(
+            ctx: RunContext[AgentDependencies],
+            filename: str,
+            program_description: str,
+            syntax_style: str = "franco",
+            include_comments: bool = True
+        ) -> str:
+            """
+            Generate and create a complete Flex program file based on description.
+            
+            Args:
+                filename: Name of the file to create (e.g., 'xo_game.lx')
+                program_description: Description of the program to generate (e.g., 'XO tic-tac-toe game')
+                syntax_style: Preferred syntax style (franco/english)
+                include_comments: Whether to include explanatory comments
+                
+            Returns:
+                Result message with file creation status and code preview
+            """
+            try:
+                # Generate the code first
+                generation_request = FlexCodeRequest(
+                    prompt=program_description,
+                    syntax_style=FlexSyntaxStyle(syntax_style.lower()),
+                    max_lines=200,  # Allow larger programs
+                    include_comments=include_comments,
+                    model_id=self.current_model_id
+                )
+                
+                # Detect syntax preference
+                detected_style = self._detect_syntax_preference(program_description, generation_request.syntax_style)
+                
+                # Create generation prompt
+                generation_prompt = self._create_generation_prompt(generation_request, detected_style)
+                
+                # Get the current agent to generate code
+                agent_response = await self.agent.run(generation_prompt)
+                
+                # Extract code from response (look for code blocks)
+                code_content = agent_response
+                if "```" in agent_response:
+                    # Extract code from markdown code blocks
+                    parts = agent_response.split("```")
+                    for i, part in enumerate(parts):
+                        if i % 2 == 1:  # Odd indices are code blocks
+                            # Remove language identifier if present
+                            lines = part.strip().split('\n')
+                            if lines and not lines[0].strip().startswith('//') and not lines[0].strip().startswith('rakm') and not lines[0].strip().startswith('int'):
+                                lines = lines[1:]  # Remove language identifier
+                            code_content = '\n'.join(lines)
+                            break
+                
+                # Create the file using the file manager
+                from pathlib import Path
+                from tools.file_manager import FileOperation
+                
+                if Path(filename).exists():
+                    return f"❌ File '{filename}' already exists. Please choose a different filename or use the create_file tool with overwrite=True."
+                
+                write_op = FileOperation(
+                    operation="write", 
+                    filepath=filename,
+                    content=code_content,
+                    backup=False
+                )
+                
+                result = await ctx.deps.file_manager.execute_operation(write_op)
+                
+                if result.success:
+                    size_info = f" ({result.file_size} bytes)" if hasattr(result, 'file_size') and result.file_size else ""
+                    return f"✅ Successfully created Flex program file: {filename}{size_info}\n\n🎯 Program: {program_description}\n📝 Syntax: {detected_style.value}\n\nCode preview:\n```flex\n{code_content[:300]}{'...' if len(code_content) > 300 else ''}\n```\n\n💡 You can now run this file with the Flex interpreter!"
+                else:
+                    return f"❌ Failed to create file '{filename}': {result.message}"
+                    
+            except Exception as e:
+                return f"❌ Error creating Flex program file '{filename}': {str(e)}"
     
     def _detect_syntax_preference(self, prompt: str, requested_style: FlexSyntaxStyle) -> FlexSyntaxStyle:
         """Detect user's syntax preference from their prompt."""

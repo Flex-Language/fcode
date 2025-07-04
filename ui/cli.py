@@ -71,10 +71,14 @@ class FlexCLI:
             await self._main_loop()
             
         except KeyboardInterrupt:
-            formatters.display_message("Goodbye!", title="Flex AI Agent")
+            self.is_running = False
+            # Clean exit message
+            self.console.print("\n👋 Goodbye!")
         except Exception as e:
             formatters.display_error(f"Fatal error: {e}")
             sys.exit(1)
+        finally:
+            self.is_running = False
     
     async def _initialize_components(self) -> None:
         """Initialize all components."""
@@ -111,16 +115,32 @@ class FlexCLI:
         welcome_message = (
             "Welcome to the Flex programming language AI assistant!\n"
             "Type 'help' for commands, 'models' for model selection, or ask me anything about Flex programming.\n\n"
-            f"Current model: [bold]{self.agent.current_model_id}[/bold]"
+            f"Current model: [bold]{self.agent.current_model_id}[/bold]\n"
+            "💡 This agent uses #file:flex_language_spec.json as its comprehensive knowledge base for accurate Flex programming assistance."
         )
         formatters.display_message(welcome_message, title="Flex AI Agent")
     
     async def _main_loop(self) -> None:
         """Main interaction loop."""
+        # Check API key status on first run
+        await self._check_api_key_status()
+        
         while self.is_running:
             try:
-                # Get user input
-                user_input = Prompt.ask("You", console=self.console).strip()
+                # Get user input with proper EOF handling
+                try:
+                    user_input = Prompt.ask("You", console=self.console).strip()
+                except EOFError:
+                    # Handle EOF gracefully (Ctrl+D or end of input)
+                    self.console.print("\n👋 Goodbye!")
+                    self.is_running = False
+                    break
+                except Exception as input_error:
+                    # Handle other input errors
+                    formatters.display_error(f"Input error: {input_error}")
+                    # Add a small delay to prevent rapid error loops
+                    await asyncio.sleep(0.1)
+                    continue
                 
                 if not user_input:
                     continue
@@ -135,12 +155,24 @@ class FlexCLI:
                     await self._process_ai_request(user_input)
                 
             except KeyboardInterrupt:
-                if Confirm.ask("\n🤔 Do you want to exit?", default=False):
+                try:
+                    self.console.print()  # New line for cleaner output
+                    if Confirm.ask("🤔 Do you want to exit?", default=False):
+                        self.is_running = False
+                        break
+                    else:
+                        formatters.display_message("Continuing...", title="Info")
+                except (KeyboardInterrupt, EOFError):
+                    # Second Ctrl+C or EOF - force exit cleanly
+                    self.console.print("\n👋 Goodbye!")
+                    self.is_running = False
                     break
-                else:
-                    formatters.display_message("Continuing...", title="Info")
             except Exception as e:
                 formatters.display_error(f"Error: {e}")
+                
+        # Clean exit (remove the extra "Thank you" message since we handle it in start())
+        if self.is_running:
+            self.is_running = False
     
     async def _handle_command(self, command_line: str) -> None:
         """Handle slash commands."""
@@ -165,29 +197,62 @@ class FlexCLI:
             'timestamp': asyncio.get_event_loop().time()
         })
         
-        self.console.print("🤖 Assistant:", style="cyan", end=" ")
-        
         try:
-            # Stream response from agent
-            response_content = ""
-            last_content = ""
+            # Add timeout wrapper for AI requests with more reasonable timeout
+            timeout_seconds = 120  # Increased to 120 seconds for complex requests
             
-            async for chunk in self.agent.run_stream(user_input):
-                # PydanticAI returns cumulative strings, so we need to extract only new content
-                current_content = str(chunk)
+            # Show loading indicator while waiting
+            self.console.print("🤖 Assistant: thinking...", style="cyan dim")
+            
+            response_content = ""
+            
+            # Create timeout task for streaming
+            async def process_stream():
+                nonlocal response_content
                 
-                # Print only the new part
-                if current_content.startswith(last_content):
-                    new_part = current_content[len(last_content):]
-                    if new_part:
-                        self.console.print(new_part, end='', flush=True)
-                    last_content = current_content
-                    response_content = current_content
-                else:
-                    # This shouldn't happen with PydanticAI, but handle it just in case
-                    self.console.print(current_content, end='', flush=True)
-                    response_content += current_content
-                    last_content += current_content
+                try:
+                    chunk_count = 0
+                    has_content = False
+                    async for chunk in self.agent.run_stream(user_input):
+                        chunk_count += 1
+                        
+                        # PydanticAI returns cumulative strings
+                        current_content = str(chunk)
+                        
+                        # Check if we're getting actual content
+                        if current_content.strip():
+                            has_content = True
+                            
+                        # Check if we're getting empty chunks (streaming issue)
+                        if chunk_count > 5 and not has_content:
+                            # Streaming is returning empty chunks, fall back to non-streaming
+                            raise ValueError("Streaming returned empty chunks")
+                        
+                        response_content = current_content
+                    
+                    # If we got no meaningful content from streaming, try non-streaming
+                    if not response_content.strip():
+                        raise ValueError("Streaming produced no content")
+                        
+                except Exception as e:
+                    raise e
+                
+                return response_content
+            
+            # Execute with timeout
+            try:
+                response_content = await asyncio.wait_for(
+                    process_stream(), 
+                    timeout=timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                raise
+            
+            # Clear the thinking indicator and display the formatted response
+            self.console.print("\r", end="")  # Clear the line
+            
+            # Use the enhanced formatter to display the response
+            formatters.display_enhanced_ai_response(response_content, self.agent.current_model_id)
             
             # Add response to history
             self.conversation_history.append({
@@ -197,10 +262,122 @@ class FlexCLI:
                 'timestamp': asyncio.get_event_loop().time()
             })
             
-            self.console.print()  # New line after response
+        except asyncio.TimeoutError:
+            self.console.print("\r", end="")  # Clear the line
+            formatters.display_error(f"Request timed out after {timeout_seconds} seconds. The AI service may be busy.")
+            formatters.display_message(
+                "💡 Try a simpler request or check your internet connection.", 
+                title="Suggestion"
+            )
             
+            # Try fallback non-streaming approach
+            try:
+                self.console.print("Trying fallback method...", style="dim")
+                fallback_response = await asyncio.wait_for(
+                    self.agent.run(user_input), 
+                    timeout=30
+                )
+                self.console.print("\r", end="")  # Clear the line
+                
+                # Use enhanced formatting for fallback response too
+                formatters.display_enhanced_ai_response(fallback_response, self.agent.current_model_id)
+                
+                # Add to history
+                self.conversation_history.append({
+                    'type': 'assistant',
+                    'content': fallback_response,
+                    'model': self.agent.current_model_id,
+                    'timestamp': asyncio.get_event_loop().time()
+                })
+                
+            except asyncio.CancelledError:
+                # Handle cancellation gracefully
+                self.console.print("\r", end="")  # Clear the line
+                formatters.display_message("Request cancelled.", title="Info")
+            except Exception as fallback_error:
+                formatters.display_error(f"Fallback also failed:")
+                formatters.display_message(
+                    "You can still use offline features like 'validate', 'models', 'help'.",
+                    title="Offline Mode"
+                )
+        except asyncio.CancelledError:
+            # Handle cancellation during main request
+            self.console.print("\r", end="")  # Clear the line
+            formatters.display_message("Request cancelled.", title="Info")
         except Exception as e:
-            formatters.display_error(f"Error processing request: {e}")
+            self.console.print("\r", end="")  # Clear the line
+            error_msg = str(e)
+            
+            # Check if this is a streaming issue that we can handle with fallback
+            if "streaming" in error_msg.lower() or "empty chunks" in error_msg.lower() or "no content" in error_msg.lower():
+                try:
+                    self.console.print("Streaming failed, trying direct method...", style="dim")
+                    fallback_response = await asyncio.wait_for(
+                        self.agent.run(user_input), 
+                        timeout=60
+                    )
+                    self.console.print("\r", end="")  # Clear the line
+                    
+                    # Use enhanced formatting for fallback response
+                    formatters.display_enhanced_ai_response(fallback_response, self.agent.current_model_id)
+                    
+                    # Add to history
+                    self.conversation_history.append({
+                        'type': 'assistant',
+                        'content': fallback_response,
+                        'model': self.agent.current_model_id,
+                        'timestamp': asyncio.get_event_loop().time()
+                    })
+                    return  # Success, don't show error
+                    
+                except asyncio.CancelledError:
+                    # Handle cancellation in fallback
+                    self.console.print("\r", end="")  # Clear the line
+                    formatters.display_message("Request cancelled.", title="Info")
+                    return
+                except Exception as fallback_error:
+                    formatters.display_error(f"Both streaming and direct methods failed: {fallback_error}")
+            
+            # Provide helpful error messages for common issues
+            elif "authentication" in error_msg.lower() or "api key" in error_msg.lower():
+                formatters.display_error("API authentication failed. Please check your OpenRouter API key.")
+                formatters.display_message(
+                    "Set OPENROUTER_API_KEY environment variable or check https://openrouter.ai/",
+                    title="Help"
+                )
+            elif "rate limit" in error_msg.lower():
+                formatters.display_error("Rate limit exceeded. Please wait a moment before trying again.")
+            elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                formatters.display_error("Network connection issue. Please check your internet connection.")
+            else:
+                formatters.display_error(f"Error processing request: {error_msg}")
+                formatters.display_message(
+                    "You can still use offline features like code validation and file operations.",
+                    title="Offline Mode Available"
+                )
+    
+    async def _check_api_key_status(self) -> None:
+        """Check API key status and provide user guidance."""
+        try:
+            api_key = self.settings.openrouter.api_key
+            if not api_key or api_key.strip() == "":
+                formatters.display_message(
+                    "⚠️  No OpenRouter API key found. AI features will be limited.\n"
+                    "To enable AI code generation:\n"
+                    "1. Get a free API key from https://openrouter.ai/\n"
+                    "2. Set: export OPENROUTER_API_KEY='your-key'\n"
+                    "3. Restart the application\n\n"
+                    "You can still use: models, validate, examples, and help commands.",
+                    title="API Key Status"
+                )
+            else:
+                formatters.display_message(
+                    "✅ OpenRouter API key found. AI features are enabled!\n"
+                    "Try asking: 'write me a Franco loop' or 'create a calculator'",
+                    title="AI Ready"
+                )
+        except Exception as e:
+            formatters.display_error(f"Error checking API status: {e}")
     
     async def _show_help(self) -> None:
         """Show help information."""
@@ -330,7 +507,7 @@ Type any question or request to get started!
     async def _show_examples_command(self) -> None:
         """Show Flex code examples."""
         result = await self.agent.run("show me Flex code examples for both Franco and English syntax")
-        self.console.print(result)
+        formatters.display_enhanced_ai_response(result, self.agent.current_model_id)
     
     async def _show_settings(self) -> None:
         """Show current settings."""
@@ -394,6 +571,7 @@ Type any question or request to get started!
     
     async def _exit_command(self) -> None:
         """Exit the application."""
+        self.console.print("👋 Goodbye!")
         self.is_running = False
 
 

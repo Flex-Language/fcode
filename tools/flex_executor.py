@@ -6,6 +6,7 @@ proper error handling, timeout management, and resource control.
 """
 
 import asyncio
+import os
 import tempfile
 import signal
 import psutil

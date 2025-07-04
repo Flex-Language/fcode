@@ -143,12 +143,13 @@ class FlexCodeValidator:
         for pattern in self.english_patterns.values():
             english_count += len(pattern.findall(code))
         
-        if franco_count > english_count:
+        # If both styles are present, it's mixed
+        if franco_count > 0 and english_count > 0:
+            return FlexSyntaxStyle.MIXED
+        elif franco_count > english_count:
             return FlexSyntaxStyle.FRANCO
         elif english_count > franco_count:
             return FlexSyntaxStyle.ENGLISH
-        elif franco_count > 0 and english_count > 0:
-            return FlexSyntaxStyle.MIXED
         else:
             return FlexSyntaxStyle.AUTO
     

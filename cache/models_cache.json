@@ -1194,31 +1194,6 @@
     "supports_streaming": false
   },
   {
-    "id": "opengvlab/internvl3-2b",
-    "name": "OpenGVLab: InternVL3 2B",
-    "description": "The 2b version of the InternVL3 series, for an even higher inference speed and very reasonable performance. An advanced multimodal large language model (MLLM) series that demonstrates superior overall performance. Compared to InternVL 2.5, InternVL3 exhibits superior multimodal perception and reasoning capabilities, while further extending its multimodal capabilities to encompass tool usage, GUI agents, industrial image analysis, 3D vision perception, and more.",
-    "pricing": {
-      "prompt": 5e-08,
-      "completion": 1e-07,
-      "request": 0.0,
-      "image": 0.0,
-      "web_search": 0.0,
-      "internal_reasoning": 0.0
-    },
-    "context_length": 12288,
-    "architecture": {
-      "modality": "text+image->text",
-      "instruct_type": null
-    },
-    "top_provider": {
-      "context_length": 12288,
-      "is_moderated": false
-    },
-    "per_request_limits": null,
-    "supports_tools": false,
-    "supports_streaming": false
-  },
-  {
     "id": "deepseek/deepseek-prover-v2",
     "name": "DeepSeek: DeepSeek Prover V2",
     "description": "DeepSeek Prover V2 is a 671B parameter model, speculated to be geared towards logic and mathematics. Likely an upgrade from [DeepSeek-Prover-V1.5](https://huggingface.co/deepseek-ai/DeepSeek-Prover-V1.5-RL) Not much is known about the model yet, as DeepSeek released it on Hugging Face without an announcement or description.",
@@ -1544,31 +1519,6 @@
     "supports_streaming": false
   },
   {
-    "id": "thudm/glm-z1-rumination-32b",
-    "name": "THUDM: GLM Z1 Rumination 32B ",
-    "description": "THUDM: GLM Z1 Rumination 32B is a 32B-parameter deep reasoning model from the GLM-4-Z1 series, optimized for complex, open-ended tasks requiring prolonged deliberation. It builds upon glm-4-32b-0414 with additional reinforcement learning phases and multi-stage alignment strategies, introducing \u201crumination\u201d capabilities designed to emulate extended cognitive processing. This includes iterative reasoning, multi-hop analysis, and tool-augmented workflows such as search, retrieval, and citation-aware synthesis.\n\nThe model excels in research-style writing, comparative analysis, and intricate question answering. It supports function calling for search and navigation primitives (`search`, `click`, `open`, `finish`), enabling use in agent-style pipelines. Rumination behavior is governed by multi-turn loops with rule-based reward shaping and delayed decision mechanisms, benchmarked against Deep Research frameworks such as OpenAI\u2019s internal alignment stacks. This variant is suitable for scenarios requiring depth over speed.",
-    "pricing": {
-      "prompt": 2.4e-07,
-      "completion": 2.4e-07,
-      "request": 0.0,
-      "image": 0.0,
-      "web_search": 0.0,
-      "internal_reasoning": 0.0
-    },
-    "context_length": 32000,
-    "architecture": {
-      "modality": "text->text",
-      "instruct_type": "deepseek-r1"
-    },
-    "top_provider": {
-      "context_length": 32000,
-      "is_moderated": false
-    },
-    "per_request_limits": null,
-    "supports_tools": false,
-    "supports_streaming": false
-  },
-  {
     "id": "microsoft/mai-ds-r1:free",
     "name": "Microsoft: MAI DS R1 (free)",
     "description": "MAI-DS-R1 is a post-trained variant of DeepSeek-R1 developed by the Microsoft AI team to improve the model\u2019s responsiveness on previously blocked topics while enhancing its safety profile. Built on top of DeepSeek-R1\u2019s reasoning foundation, it integrates 110k examples from the Tulu-3 SFT dataset and 350k internally curated multilingual safety-alignment samples. The model retains strong reasoning, coding, and problem-solving capabilities, while unblocking a wide range of prompts previously restricted in R1.\n\nMAI-DS-R1 demonstrates improved performance on harm mitigation benchmarks and maintains competitive results across general reasoning tasks. It surpasses R1-1776 in satisfaction metrics for blocked queries and reduces leakage in harmful content categories. The model is based on a transformer MoE architecture and is suitable for general-purpose use cases, excluding high-stakes domains such as legal, medical, or autonomous systems.",
@@ -1612,31 +1562,6 @@
     },
     "top_provider": {
       "context_length": 32768,
-      "is_moderated": false
-    },
-    "per_request_limits": null,
-    "supports_tools": false,
-    "supports_streaming": false
-  },
-  {
-    "id": "thudm/glm-z1-32b",
-    "name": "THUDM: GLM Z1 32B",
-    "description": "GLM-Z1-32B-0414 is an enhanced reasoning variant of GLM-4-32B, built for deep mathematical, logical, and code-oriented problem solving. It applies extended reinforcement learning\u2014both task-specific and general pairwise preference-based\u2014to improve performance on complex multi-step tasks. Compared to the base GLM-4-32B model, Z1 significantly boosts capabilities in structured reasoning and formal domains.\n\nThe model supports enforced \u201cthinking\u201d steps via prompt engineering and offers improved coherence for long-form outputs. It\u2019s optimized for use in agentic workflows, and includes support for long context (via YaRN), JSON tool calling, and fine-grained sampling configuration for stable inference. Ideal for use cases requiring deliberate, multi-step reasoning or formal derivations.",
-    "pricing": {
-      "prompt": 2.4e-07,
-      "completion": 2.4e-07,
-      "request": 0.0,
-      "image": 0.0,
-      "web_search": 0.0,
-      "internal_reasoning": 0.0
-    },
-    "context_length": 32000,
-    "architecture": {
-      "modality": "text->text",
-      "instruct_type": "deepseek-r1"
-    },
-    "top_provider": {
-      "context_length": 32000,
       "is_moderated": false
     },
     "per_request_limits": null,
@@ -3800,7 +3725,7 @@
     "description": "Mistral Small 3 is a 24B-parameter language model optimized for low-latency performance across common AI tasks. Released under the Apache 2.0 license, it features both pre-trained and instruction-tuned versions designed for efficient local deployment.\n\nThe model achieves 81% accuracy on the MMLU benchmark and performs competitively with larger models like Llama 3.3 70B and Qwen 32B, while operating at three times the speed on equivalent hardware. [Read the blog post about the model here.](https://mistral.ai/news/mistral-small-3/)",
     "pricing": {
       "prompt": 5e-08,
-      "completion": 9e-08,
+      "completion": 8e-08,
       "request": 0.0,
       "image": 0.0,
       "web_search": 0.0,
@@ -4425,20 +4350,20 @@
     "name": "Meta: Llama 3.3 70B Instruct",
     "description": "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out). The Llama 3.3 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.\n\nSupported languages: English, German, French, Italian, Portuguese, Hindi, Spanish, and Thai.\n\n[Model Card](https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/MODEL_CARD.md)",
     "pricing": {
-      "prompt": 3.9e-08,
+      "prompt": 3.8e-08,
       "completion": 1.2e-07,
       "request": 0.0,
       "image": 0.0,
       "web_search": 0.0,
       "internal_reasoning": 0.0
     },
-    "context_length": 131072,
+    "context_length": 131000,
     "architecture": {
       "modality": "text->text",
       "instruct_type": "llama3"
     },
     "top_provider": {
-      "context_length": 131072,
+      "context_length": 131000,
       "is_moderated": false
     },
     "per_request_limits": null,
@@ -5053,31 +4978,6 @@
     "top_provider": {
       "context_length": 200000,
       "is_moderated": true
-    },
-    "per_request_limits": null,
-    "supports_tools": false,
-    "supports_streaming": false
-  },
-  {
-    "id": "x-ai/grok-beta",
-    "name": "xAI: Grok Beta",
-    "description": "Grok Beta is xAI's experimental language model with state-of-the-art reasoning capabilities, best for complex and multi-step use cases.\n\nIt is the successor of [Grok 2](https://x.ai/blog/grok-2) with enhanced context length.",
-    "pricing": {
-      "prompt": 5e-06,
-      "completion": 1.5e-05,
-      "request": 0.0,
-      "image": 0.0,
-      "web_search": 0.0,
-      "internal_reasoning": 0.0
-    },
-    "context_length": 131072,
-    "architecture": {
-      "modality": "text->text",
-      "instruct_type": null
-    },
-    "top_provider": {
-      "context_length": 131072,
-      "is_moderated": false
     },
     "per_request_limits": null,
     "supports_tools": false,
@@ -6045,8 +5945,8 @@
     "name": "Meta: Llama 3.1 8B Instruct",
     "description": "Meta's latest class of model (Llama 3.1) launched with a variety of sizes & flavors. This 8B instruct-tuned version is fast and efficient.\n\nIt has demonstrated strong performance compared to leading closed-source models in human evaluations.\n\nTo read more about the model release, [click here](https://ai.meta.com/blog/meta-llama-3-1/). Usage of this model is subject to [Meta's Acceptable Use Policy](https://llama.meta.com/llama3/use-policy/).",
     "pricing": {
-      "prompt": 1.6e-08,
-      "completion": 2.1e-08,
+      "prompt": 1.5e-08,
+      "completion": 2e-08,
       "request": 0.0,
       "image": 0.0,
       "web_search": 0.0,
@@ -6145,7 +6045,7 @@
     "name": "Mistral: Mistral Nemo",
     "description": "A 12B parameter model with a 128k token context length built by Mistral in collaboration with NVIDIA.\n\nThe model is multilingual, supporting English, French, German, Spanish, Italian, Portuguese, Chinese, Japanese, Korean, Arabic, and Hindi.\n\nIt supports function calling and is released under the Apache 2.0 license.",
     "pricing": {
-      "prompt": 1e-08,
+      "prompt": 8e-09,
       "completion": 1e-09,
       "request": 0.0,
       "image": 0.0,
