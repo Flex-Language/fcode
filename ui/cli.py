@@ -7,12 +7,19 @@ with streaming responses, model selection, and comprehensive Flex programming su
 
 import asyncio
 import sys
+import os
 from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.markdown import Markdown
+from rich.rule import Rule
+from rich.text import Text
+from rich.box import ROUNDED
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.styles import Style
 
 from agents.flex_agent import FlexAIAgent
 from tools.model_manager import ModelManager
@@ -37,6 +44,14 @@ class FlexCLI:
         # Session state
         self.conversation_history: List[Dict[str, Any]] = []
         self.is_running = False
+        self.in_multiline = False
+        self.prompt_session = PromptSession(
+            style=Style.from_dict({
+                "flex-agent": "bold cyan",
+                "model": "#888888",  # Dim gray
+                "arrow": "bold",
+            })
+        )
         
         # Commands
         self.commands = {
@@ -45,6 +60,7 @@ class FlexCLI:
             'switch': self._switch_model_command,
             'validate': self._validate_code_command,
             'execute': self._execute_code_command,
+            'multiline': self._toggle_multiline_mode,
             'examples': self._show_examples_command,
             'settings': self._show_settings,
             'clear': self._clear_conversation,
@@ -74,6 +90,7 @@ class FlexCLI:
             self.is_running = False
             # Clean exit message
             self.console.print("\n👋 Goodbye!")
+            os._exit(0)
         except Exception as e:
             formatters.display_error(f"Fatal error: {e}")
             sys.exit(1)
@@ -120,6 +137,94 @@ class FlexCLI:
         )
         formatters.display_message(welcome_message, title="Flex AI Agent")
     
+    def _get_prompt_text(self) -> Text:
+        """Create the text part of the prompt with context."""
+        prompt_text = Text()
+        prompt_text.append("flex-agent", style="bold cyan")
+        
+        if self.agent and self.agent.current_model_id:
+            model_name = self.agent.current_model_id.split('/')[-1]
+            prompt_text.append(f" ({model_name})", style="dim")
+        
+        return prompt_text
+
+    async def _get_user_input(self) -> Optional[str]:
+        """Get user input and display it in a formatted panel."""
+        self.console.print(Rule(style="dim green"))
+        
+        if self.in_multiline:
+            self.console.print(
+                Panel(
+                    "Multi-line input mode is active. Paste your code and press [bold]Ctrl+D[/bold] (or [bold]Ctrl+Z[/bold] on Windows) when done. Type `/multiline` again to exit.",
+                    title="Multi-line Input",
+                    border_style="yellow",
+                    title_align="left"
+                )
+            )
+            lines = []
+            try:
+                while True:
+                    line = self.console.input("... ")
+                    if line.strip() == "/multiline":
+                        self._toggle_multiline_mode()
+                        return None # Exit multiline mode without processing
+                    lines.append(line)
+            except (EOFError, KeyboardInterrupt):
+                pass # End of input
+            
+            user_input = "\n".join(lines).strip()
+            
+            if user_input:
+                self.console.print(
+                    Panel(
+                        Text(user_input, style="white"),
+                        title="You",
+                        border_style="cyan",
+                        title_align="left"
+                    )
+                )
+            return user_input
+
+        # Single-line input with prompt_toolkit for full editing support
+        prompt_parts = [("class:flex-agent", "flex-agent")]
+        if self.agent and self.agent.current_model_id:
+            model_name = self.agent.current_model_id.split("/")[-1]
+            prompt_parts.extend([
+                ("", " "),
+                ("class:model", f"({model_name})")
+            ])
+        prompt_parts.append(("", " "))
+        prompt_parts.append(("class:arrow", "❯ "))
+
+        try:
+            user_input = await self.prompt_session.prompt_async(prompt_parts)
+        except (EOFError, KeyboardInterrupt):
+            self.console.print("\n👋 Goodbye!")
+            os._exit(0)
+
+        if user_input:
+            user_panel = Panel(
+                Text(user_input, style="bright_white"),
+                title="👤 You",
+                title_align="left",
+                subtitle=self._get_prompt_text(),
+                subtitle_align="right",
+                border_style="bold green",
+                box=ROUNDED,
+                padding=(0, 1)
+            )
+            self.console.print(user_panel)
+        
+        return user_input.strip()
+
+    async def _toggle_multiline_mode(self):
+        """Toggle multi-line input mode."""
+        self.in_multiline = not self.in_multiline
+        if self.in_multiline:
+            formatters.display_message("Switched to multi-line input mode.", title="Mode Change")
+        else:
+            formatters.display_message("Switched to single-line input mode.", title="Mode Change")
+
     async def _main_loop(self) -> None:
         """Main interaction loop."""
         # Check API key status on first run
@@ -127,21 +232,14 @@ class FlexCLI:
         
         while self.is_running:
             try:
-                # Get user input with proper EOF handling
-                try:
-                    user_input = Prompt.ask("You", console=self.console).strip()
-                except EOFError:
-                    # Handle EOF gracefully (Ctrl+D or end of input)
-                    self.console.print("\n👋 Goodbye!")
-                    self.is_running = False
-                    break
-                except Exception as input_error:
-                    # Handle other input errors
-                    formatters.display_error(f"Input error: {input_error}")
-                    # Add a small delay to prevent rapid error loops
-                    await asyncio.sleep(0.1)
-                    continue
+                user_input = await self._get_user_input()
                 
+                if user_input is None:
+                    if not self.is_running: # EOF/Ctrl+C triggered exit
+                        self.console.print("\n👋 Goodbye!")
+                        break
+                    continue # Switched out of multiline mode, just loop again
+
                 if not user_input:
                     continue
                 
@@ -157,7 +255,13 @@ class FlexCLI:
             except KeyboardInterrupt:
                 try:
                     self.console.print()  # New line for cleaner output
-                    if Confirm.ask("🤔 Do you want to exit?", default=False):
+                    
+                    # Run Confirm.ask in a thread to avoid blocking the event loop
+                    should_exit = await asyncio.to_thread(
+                        Confirm.ask, "🤔 Do you want to exit?", console=self.console, default=False
+                    )
+
+                    if should_exit:
                         self.is_running = False
                         break
                     else:
@@ -165,8 +269,7 @@ class FlexCLI:
                 except (KeyboardInterrupt, EOFError):
                     # Second Ctrl+C or EOF - force exit cleanly
                     self.console.print("\n👋 Goodbye!")
-                    self.is_running = False
-                    break
+                    os._exit(0)
             except Exception as e:
                 formatters.display_error(f"Error: {e}")
                 
@@ -180,11 +283,15 @@ class FlexCLI:
         command = parts[0].lower()
         args = parts[1:] if len(parts) > 1 else []
         
-        if command in self.commands:
+        handler = self.commands.get(command)
+        if handler:
             if command in ['switch'] and args:
                 await self._switch_model_command(' '.join(args))
+            elif command in ['validate', 'execute'] and args:
+                # Allow inline code with validate/execute commands
+                await handler(' '.join(args))
             else:
-                await self.commands[command]()
+                await handler()
         else:
             formatters.display_error(f"Unknown command: /{command}\nType 'help' for available commands.")
     
@@ -213,7 +320,7 @@ class FlexCLI:
                 try:
                     chunk_count = 0
                     has_content = False
-                    async for chunk in self.agent.run_stream(user_input):
+                    async for chunk in self.agent.run_stream(user_input, conversation_history=self.conversation_history):
                         chunk_count += 1
                         
                         # PydanticAI returns cumulative strings
@@ -274,7 +381,7 @@ class FlexCLI:
             try:
                 self.console.print("Trying fallback method...", style="dim")
                 fallback_response = await asyncio.wait_for(
-                    self.agent.run(user_input), 
+                    self.agent.run(user_input, conversation_history=self.conversation_history), 
                     timeout=30
                 )
                 self.console.print("\r", end="")  # Clear the line
@@ -313,7 +420,7 @@ class FlexCLI:
                 try:
                     self.console.print("Streaming failed, trying direct method...", style="dim")
                     fallback_response = await asyncio.wait_for(
-                        self.agent.run(user_input), 
+                        self.agent.run(user_input, conversation_history=self.conversation_history), 
                         timeout=60
                     )
                     self.console.print("\r", end="")  # Clear the line
@@ -393,10 +500,11 @@ class FlexCLI:
 - `exit` / `quit` - Exit the application
 
 ## Flex Programming Commands
-- `validate <code>` - Validate Flex code
-- `execute <code>` - Execute Flex code
-- `/validate` - Interactive code validation
-- `/execute` - Interactive code execution
+- `validate [code]` - Validate Flex code (interactive if no code provided)
+- `execute [code]` - Execute Flex code (interactive if no code provided)
+- `/validate` - Interactive code validation mode
+- `/execute` - Interactive code execution mode
+- `/multiline` - Toggle multi-line input mode for code snippets
 
 ## Utility Commands
 - `settings` - Show current settings

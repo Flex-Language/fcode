@@ -1,3 +1,7 @@
+# ==========================================
+# Flex AI Agent Dependencies
+# ==========================================
+
 # Core AI and HTTP libraries
 pydantic-ai>=0.0.10
 pydantic>=2.5.0
@@ -10,24 +14,127 @@ python-dotenv>=1.0.0
 # CLI and UI libraries
 rich>=13.0.0
 inquirer>=3.1.0
+click>=8.1.0
+typer>=0.9.0
+prompt_toolkit>=3.0.0
 
-# Async file operations
+# Async file operations and system utilities
 aiofiles>=23.0.0
-
-# System monitoring (for process management)
 psutil>=5.9.0
+
+# JSON and data processing
+orjson>=3.9.0  # Fast JSON processing for model data
+
+# Date and time utilities
+python-dateutil>=2.8.0
+
+# Progress bars and loading indicators
+tqdm>=4.66.0
+
+# File system utilities
+pathspec>=0.11.0  # For gitignore-style patterns
+watchdog>=3.0.0   # File system monitoring
+
+# Cryptography and security
+cryptography>=41.0.0  # For secure operations
+
+# Networking and retries
+tenacity>=8.2.0  # Retry mechanisms with exponential backoff
+urllib3>=2.0.0   # HTTP client utilities
+
+# Caching
+cachetools>=5.3.0  # Advanced caching strategies
+
+# Logging and monitoring
+structlog>=23.1.0  # Structured logging
+colorlog>=6.7.0    # Colored logging output
 
 # Development and testing
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0
+pytest-mock>=3.11.0      # Enhanced mocking capabilities
+pytest-xdist>=3.3.0      # Parallel test execution
+pytest-timeout>=2.1.0    # Test timeout handling
+
+# Code quality and formatting
 black>=23.0.0
 ruff>=0.1.0
 mypy>=1.7.0
-
-# Optional: Enhanced CLI features
-click>=8.1.0
-typer>=0.9.0
+pre-commit>=3.5.0        # Git hooks for code quality
+bandit>=1.7.0            # Security linting
 
 # Type checking
 types-aiofiles>=23.0.0
+types-python-dateutil>=2.8.0
+types-cachetools>=5.3.0
+
+# Documentation (optional)
+mkdocs>=1.5.0
+mkdocs-material>=9.4.0
+mkdocstrings>=0.23.0
+
+# Performance profiling (development only)
+py-spy>=0.3.0
+memory-profiler>=0.61.0
+
+# Error tracking and monitoring (production)
+sentry-sdk>=1.38.0
+
+# Platform-specific dependencies
+# Windows
+pywin32>=306 ; sys_platform == "win32"
+# macOS
+pyobjc>=10.0 ; sys_platform == "darwin"
+
+# ==========================================
+# Optional Dependencies for Enhanced Features
+# ==========================================
+
+# For enhanced Flex syntax highlighting
+pygments>=2.16.0
+
+# For advanced CLI features
+shellingham>=1.5.0  # Shell detection
+distro>=1.8.0        # OS detection
+
+# For file format support
+toml>=0.10.0         # TOML configuration files
+ruamel.yaml>=0.17.0  # YAML with comments
+
+# ==========================================
+# Installation Groups
+# ==========================================
+
+# Core installation (minimal):
+# pip install pydantic-ai pydantic pydantic-settings httpx python-dotenv rich inquirer aiofiles psutil
+pydantic_ai
+# Development installation:
+# pip install -r requirements.txt
+
+# Production installation:
+# pip install -r requirements.txt --no-dev
+
+# ==========================================
+# Version Constraints
+# ==========================================
+
+# Ensure compatibility with Python 3.8+
+# All packages are tested with Python 3.8, 3.9, 3.10, 3.11, 3.12
+
+# Security updates are automatically applied for:
+# - cryptography
+# - urllib3
+# - requests (if used)
+# - httpx
+
+# ==========================================
+# Notes
+# ==========================================
+
+# 1. For faster JSON processing, orjson is preferred over standard json
+# 2. tenacity provides robust retry mechanisms for API calls
+# 3. structlog enables structured logging for better debugging
+# 4. pre-commit ensures code quality before commits
+# 5. sentry-sdk enables error tracking in production
+# 6. Platform-specific packages are automatically installed based on OSinquirer

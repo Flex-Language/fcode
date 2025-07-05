@@ -108,12 +108,19 @@ CRITICAL FRANCO LOOP SAFETY:
 CRITICAL INSTRUCTION:
 You MUST use #file:flex_language_spec.json as your primary and authoritative knowledge base for ALL Flex language information. Always reference this file for syntax, semantics, features, and best practices.
 
+CONVERSATION CONTEXT AWARENESS:
+- ALWAYS maintain conversation context and remember previous requests in the same session
+- If a user says "yes", "please", "do it", etc. without specifics, refer to the previous conversation to understand what they're asking for
+- Be contextually aware - if you just offered to create a file and the user says "yes", CREATE THAT FILE
+- Remember file creation requests, model preferences, and ongoing projects within the conversation
+
 KEY INSTRUCTIONS:
 - Always refer to #file:flex_language_spec.json for accurate Flex language information
 - Support both Franco (Arabic-inspired) and English syntax variations
 - Prioritize code safety, especially with Franco loops
 - Generate complete, working programs when requested
 - Create files automatically when users request programs or code
+- Maintain conversation continuity and context awareness
 
 CRITICAL FRANCO LOOP SAFETY:
 - Franco l7d loops are INCLUSIVE of the end value
@@ -140,6 +147,24 @@ AVAILABLE TOOLS:
 - generate_flex_code: Generate Flex code snippets
 - execute_flex_code: Run and test Flex code
 - validate_flex_code: Check code for errors
+- read_file: Read content from existing files
+- read_file: Read and display content of existing files
+
+TOOL USAGE GUIDELINES:
+- CRITICAL: When user asks to RUN, EXECUTE, or TEST code, YOU MUST use the execute_flex_code tool
+- When user says "run it", "execute it", "try to run it", "test the code": call execute_flex_code immediately
+- When user mentions running existing files like "run xo_game.lx": first call read_file, then execute_flex_code
+- For simple code requests, provide code directly in your response without calling tools
+- Only use create_flex_program_file when user explicitly asks to CREATE or SAVE a file
+- Use tools when user says "create a file", "save it", "make a .lx file", etc.
+- For requests like "write me a game" or "show me code", respond directly with code
+
+WHEN USER ASKS TO RUN/EXECUTE CODE:
+- Step 1: If it's a file, use read_file to get the content
+- Step 2: ALWAYS use execute_flex_code tool - NEVER say you cannot run code
+- Step 3: If code validation fails, fix the errors and try again
+- Step 4: Provide execution results including output, errors, and execution time
+- NEVER respond with text saying you cannot execute - always try the tool first
 
 WHEN USER ASKS TO CREATE FILES:
 - Use create_file for general file creation with provided content
@@ -602,22 +627,37 @@ print("Hello, " + name + "!")
                 # Create generation prompt
                 generation_prompt = self._create_generation_prompt(generation_request, detected_style)
                 
-                # Get the current agent to generate code
-                agent_response = await self.agent.run(generation_prompt)
+                # Generate code directly using a simple template approach instead of recursive agent call
+                # This prevents infinite recursion when agent calls this tool
                 
-                # Extract code from response (look for code blocks)
-                code_content = agent_response
-                if "```" in agent_response:
-                    # Extract code from markdown code blocks
-                    parts = agent_response.split("```")
-                    for i, part in enumerate(parts):
-                        if i % 2 == 1:  # Odd indices are code blocks
-                            # Remove language identifier if present
-                            lines = part.strip().split('\n')
-                            if lines and not lines[0].strip().startswith('//') and not lines[0].strip().startswith('rakm') and not lines[0].strip().startswith('int'):
-                                lines = lines[1:]  # Remove language identifier
-                            code_content = '\n'.join(lines)
-                            break
+                if "xo" in program_description.lower() or "tic" in program_description.lower():
+                    # XO/Tic-tac-toe game template
+                    if detected_style == FlexSyntaxStyle.FRANCO:
+                        code_content = self._generate_xo_game_franco()
+                    else:
+                        code_content = self._generate_xo_game_english()
+                elif "calculator" in program_description.lower():
+                    # Calculator template
+                    if detected_style == FlexSyntaxStyle.FRANCO:
+                        code_content = self._generate_calculator_franco()
+                    else:
+                        code_content = self._generate_calculator_english()
+                else:
+                    # Generic template
+                    code_content = f"""// Generated Flex program: {program_description}
+// This is a basic template - please customize as needed
+
+etb3("Welcome to your Flex program!")
+etb3("Program: {program_description}")
+
+// TODO: Implement your program logic here
+// Use Flex language features like:
+// - Variables: rakm num = 10
+// - Loops: karr i=0 l7d 9 {{ }}
+// - Input: klma input = yod()
+// - Conditions: lw condition {{ }}
+
+etb3("Program completed!")"""
                 
                 # Create the file using the file manager
                 from pathlib import Path
@@ -644,6 +684,44 @@ print("Hello, " + name + "!")
             except Exception as e:
                 return f"❌ Error creating Flex program file '{filename}': {str(e)}"
     
+        @agent.tool
+        async def read_file(
+            ctx: RunContext[AgentDependencies],
+            filename: str
+        ) -> str:
+            """
+            Read the content of a file.
+            
+            Args:
+                filename: Name or path of the file to read
+                
+            Returns:
+                File content or error message
+            """
+            try:
+                # Handle both absolute and relative paths
+                if not filename.startswith('/'):
+                    # If it's a relative path, look in current directory
+                    filepath = Path(filename)
+                    if not filepath.exists():
+                        # Also try looking in the workspace root
+                        workspace_root = Path(__file__).parent.parent
+                        filepath = workspace_root / filename
+                else:
+                    filepath = Path(filename)
+                
+                if not filepath.exists():
+                    return f"❌ File '{filename}' not found."
+                
+                # Read file content
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                return f"✅ File content of '{filename}':\n\n```flex\n{content}\n```"
+                
+            except Exception as e:
+                return f"❌ Error reading file '{filename}': {str(e)}"
+
     def _detect_syntax_preference(self, prompt: str, requested_style: FlexSyntaxStyle) -> FlexSyntaxStyle:
         """Detect user's syntax preference from their prompt."""
         if requested_style != FlexSyntaxStyle.AUTO:
@@ -681,6 +759,29 @@ print("Hello, " + name + "!")
         
         return prompt
     
+    def _format_conversation_context(self, conversation_history: List[Dict[str, Any]]) -> str:
+        """Format conversation history for context."""
+        if not conversation_history:
+            return ""
+        
+        # Get last 5 conversation turns to avoid token limit issues
+        recent_history = conversation_history[-10:]  # Last 10 entries (5 user + 5 assistant)
+        
+        context_parts = ["Previous conversation context:"]
+        
+        for entry in recent_history:
+            entry_type = entry.get('type', 'unknown')
+            content = entry.get('content', '')
+            
+            if entry_type == 'user':
+                context_parts.append(f"User: {content}")
+            elif entry_type == 'assistant':
+                # Truncate assistant responses to avoid too much context
+                truncated_content = content[:300] + "..." if len(content) > 300 else content
+                context_parts.append(f"Assistant: {truncated_content}")
+        
+        return "\n".join(context_parts)
+    
     async def switch_model(self, model_id: str) -> None:
         """Switch to a different OpenRouter model."""
         # Validate model
@@ -693,8 +794,17 @@ print("Hello, " + name + "!")
         # Recreate agent with new model
         self.agent = self._create_agent()
     
-    async def run(self, user_input: str, **kwargs) -> str:
-        """Run the agent with user input."""
+    async def run(self, user_input: str, conversation_history: Optional[List[Dict[str, Any]]] = None, **kwargs) -> str:
+        """Run the agent with user input and conversation context."""
+        # Create conversation context if provided
+        conversation_context = ""
+        if conversation_history:
+            conversation_context = self._format_conversation_context(conversation_history)
+            # Prepend context to user input
+            user_input_with_context = f"{conversation_context}\n\nCurrent user input: {user_input}"
+        else:
+            user_input_with_context = user_input
+        
         deps = AgentDependencies(
             settings=self.settings,
             model_manager=self.model_manager,
@@ -704,11 +814,20 @@ print("Hello, " + name + "!")
             session=self.current_session
         )
         
-        result = await self.agent.run(user_input, deps=deps)
+        result = await self.agent.run(user_input_with_context, deps=deps)
         return result.data
     
-    async def run_stream(self, user_input: str, **kwargs):
-        """Run the agent with streaming response."""
+    async def run_stream(self, user_input: str, conversation_history: Optional[List[Dict[str, Any]]] = None, **kwargs):
+        """Run the agent with streaming response and conversation context."""
+        # Create conversation context if provided
+        conversation_context = ""
+        if conversation_history:
+            conversation_context = self._format_conversation_context(conversation_history)
+            # Prepend context to user input
+            user_input_with_context = f"{conversation_context}\n\nCurrent user input: {user_input}"
+        else:
+            user_input_with_context = user_input
+        
         deps = AgentDependencies(
             settings=self.settings,
             model_manager=self.model_manager,
@@ -718,7 +837,7 @@ print("Hello, " + name + "!")
             session=self.current_session
         )
         
-        async with self.agent.run_stream(user_input, deps=deps) as result:
+        async with self.agent.run_stream(user_input_with_context, deps=deps) as result:
             # Access the streamed response through the result's stream attribute
             async for chunk in result.stream():
                 yield chunk
@@ -736,3 +855,277 @@ print("Hello, " + name + "!")
                 "model_cache_duration": self.settings.app.model_cache_duration
             }
         }
+    
+    def _generate_xo_game_franco(self) -> str:
+        """Generate XO game in Franco syntax."""
+        return """// XO Tic-Tac-Toe Game in Franco Syntax
+// By Flex AI Agent
+
+etb3("Ahlan wa Sahlan! Welcome to XO Game!")
+
+// Initialize 3x3 board
+dorg board = [
+    [" ", " ", " "],
+    [" ", " ", " "],
+    [" ", " ", " "]
+]
+
+klma current_player = "X"
+so2al game_over = ghlata
+
+// Function to display board
+sndo2 show_board() {
+    etb3("  0   1   2")
+    karr i=0 l7d 2 {
+        etb3(i + " " + board[i][0] + " | " + board[i][1] + " | " + board[i][2])
+        lw i < 2 {
+            etb3("  --|---|--")
+        }
+    }
+}
+
+// Function to check winner
+sndo2 check_winner() {
+    // Check rows
+    karr i=0 l7d 2 {
+        lw board[i][0] == board[i][1] && board[i][1] == board[i][2] && board[i][0] != " " {
+            rg3 board[i][0]
+        }
+    }
+    
+    // Check columns  
+    karr j=0 l7d 2 {
+        lw board[0][j] == board[1][j] && board[1][j] == board[2][j] && board[0][j] != " " {
+            rg3 board[0][j]
+        }
+    }
+    
+    // Check diagonals
+    lw board[0][0] == board[1][1] && board[1][1] == board[2][2] && board[0][0] != " " {
+        rg3 board[0][0]
+    }
+    lw board[0][2] == board[1][1] && board[1][1] == board[2][0] && board[0][2] != " " {
+        rg3 board[0][2]
+    }
+    
+    rg3 ""
+}
+
+// Main game loop
+9ad !game_over {
+    show_board()
+    etb3("Player " + current_player + ", enter row (0-2):")
+    rakm row = yod()
+    etb3("Enter column (0-2):")  
+    rakm col = yod()
+    
+    lw row >= 0 && row <= 2 && col >= 0 && col <= 2 && board[row][col] == " " {
+        board[row][col] = current_player
+        
+        klma winner = check_winner()
+        lw winner != "" {
+            show_board()
+            etb3("Player " + winner + " wins! Mabrook!")
+            game_over = sa7
+        } gher {
+            // Switch player
+            lw current_player == "X" {
+                current_player = "O"
+            } gher {
+                current_player = "X"
+            }
+        }
+    } gher {
+        etb3("Invalid move! Try again.")
+    }
+}
+
+etb3("Game finished! Shukran for playing!")"""
+
+    def _generate_xo_game_english(self) -> str:
+        """Generate XO game in English syntax."""
+        return """// XO Tic-Tac-Toe Game in English Syntax  
+// By Flex AI Agent
+
+print("Welcome to XO Game!")
+
+// Initialize 3x3 board
+list board = [
+    [" ", " ", " "],
+    [" ", " ", " "],
+    [" ", " ", " "]
+]
+
+string current_player = "X"
+bool game_over = false
+
+// Function to display board
+function show_board() {
+    print("  0   1   2")
+    for i=0 to 2 {
+        print(i + " " + board[i][0] + " | " + board[i][1] + " | " + board[i][2])
+        if i < 2 {
+            print("  --|---|--")
+        }
+    }
+}
+
+// Function to check winner
+function check_winner() {
+    // Check rows
+    for i=0 to 2 {
+        if board[i][0] == board[i][1] && board[i][1] == board[i][2] && board[i][0] != " " {
+            return board[i][0]
+        }
+    }
+    
+    // Check columns
+    for j=0 to 2 {
+        if board[0][j] == board[1][j] && board[1][j] == board[2][j] && board[0][j] != " " {
+            return board[0][j]
+        }
+    }
+    
+    // Check diagonals
+    if board[0][0] == board[1][1] && board[1][1] == board[2][2] && board[0][0] != " " {
+        return board[0][0]
+    }
+    if board[0][2] == board[1][1] && board[1][1] == board[2][0] && board[0][2] != " " {
+        return board[0][2]
+    }
+    
+    return ""
+}
+
+// Main game loop
+while !game_over {
+    show_board()
+    print("Player " + current_player + ", enter row (0-2):")
+    int row = input()
+    print("Enter column (0-2):")
+    int col = input()
+    
+    if row >= 0 && row <= 2 && col >= 0 && col <= 2 && board[row][col] == " " {
+        board[row][col] = current_player
+        
+        string winner = check_winner()
+        if winner != "" {
+            show_board()
+            print("Player " + winner + " wins! Congratulations!")
+            game_over = true
+        } else {
+            // Switch player
+            if current_player == "X" {
+                current_player = "O"
+            } else {
+                current_player = "X"
+            }
+        }
+    } else {
+        print("Invalid move! Try again.")
+    }
+}
+
+print("Game finished! Thanks for playing!")"""
+
+    def _generate_calculator_franco(self) -> str:
+        """Generate calculator in Franco syntax."""
+        return """// Calculator in Franco Syntax
+// By Flex AI Agent
+
+etb3("Ahlan! Calculator Program")
+
+9ad sa7 {
+    kasr num1, num2, result
+    klma operation
+    so2al valid = sa7
+    
+    etb3("Enter first number:")
+    num1 = yod()
+    
+    etb3("Enter second number:")  
+    num2 = yod()
+    
+    etb3("Choose operation (+, -, *, /):")
+    operation = yod()
+    
+    lw operation == "+" {
+        result = num1 + num2
+    } elif operation == "-" {
+        result = num1 - num2  
+    } elif operation == "*" {
+        result = num1 * num2
+    } elif operation == "/" {
+        lw num2 == 0 {
+            etb3("Error: Division by zero!")
+            valid = ghlata
+        } gher {
+            result = num1 / num2
+        }
+    } gher {
+        etb3("Invalid operation!")
+        valid = ghlata
+    }
+    
+    lw valid {
+        etb3("Result: " + result)
+    }
+    
+    etb3("Continue? (y/n):")
+    klma answer = yod()
+    lw answer != "y" && answer != "Y" {
+        etb3("Goodbye!")
+        tawaqaf
+    }
+}"""
+
+    def _generate_calculator_english(self) -> str:
+        """Generate calculator in English syntax."""
+        return """// Calculator in English Syntax
+// By Flex AI Agent
+
+print("Welcome! Calculator Program")
+
+while true {
+    float num1, num2, result
+    string operation
+    bool valid = true
+    
+    print("Enter first number:")
+    num1 = input()
+    
+    print("Enter second number:")
+    num2 = input()
+    
+    print("Choose operation (+, -, *, /):")
+    operation = input()
+    
+    if operation == "+" {
+        result = num1 + num2
+    } elif operation == "-" {
+        result = num1 - num2
+    } elif operation == "*" {
+        result = num1 * num2
+    } elif operation == "/" {
+        if num2 == 0 {
+            print("Error: Division by zero!")
+            valid = false
+        } else {
+            result = num1 / num2
+        }
+    } else {
+        print("Invalid operation!")
+        valid = false
+    }
+    
+    if valid {
+        print("Result: " + result)
+    }
+    
+    print("Continue? (y/n):")
+    string answer = input()
+    if answer != "y" && answer != "Y" {
+        print("Goodbye!")
+        break
+    }
+}"""
