@@ -1,13 +1,13 @@
 // Safe Franco Loop Examples
-// CRITICAL: Franco l7d loops are INCLUSIVE - always use length(array) - 1
+// CORRECTED: Franco l7d loops specify iteration count - use length(array) for complete access
 
 etb3("=== Safe Franco Loop Examples ===")
 
 // Safe array iteration - THE CORRECT WAY
 dorg numbers = [1, 2, 3, 4, 5, 10, 15, 20]
 
-etb3("Array contents using SAFE Franco loop:")
-karr i=0 l7d length(numbers) - 1 {
+etb3("Array contents using CORRECT Franco loop:")
+karr i=0 l7d length(numbers) {
     etb3("numbers[" + i + "] = " + numbers[i])
 }
 
@@ -36,4 +36,4 @@ talama value <= 5 {
     value = value + 1
 }
 
-etb3("\n=== Remember: Always use 'length(array) - 1' in Franco l7d loops! ===")
+etb3("\n=== Remember: Franco l7d N means exactly N iterations (0 to N-1)! ===")

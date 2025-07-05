@@ -14,19 +14,19 @@ A comprehensive AI-powered programming assistant for the Flex programming langua
 - **File Management**: Secure file operations with backup support
 - **Interactive CLI**: Rich command-line interface with streaming responses
 
-## ⚠️ Critical Safety Feature
+## ✅ Franco Loop Understanding
 
-**Franco l7d Loop Safety**: Franco loops are INCLUSIVE and will cause out-of-bounds errors if not handled correctly. The agent automatically validates and fixes:
+**Franco l7d Loop Mechanics**: Franco loops specify iteration count (like traditional for loops). The agent provides correct usage patterns:
 
 ```flex
-// ❌ UNSAFE - Will cause out-of-bounds error!
+// ✅ CORRECT - Complete array access
 karr i=0 l7d length(array) {
-    print(array[i])  // ERROR on last iteration!
+    print(array[i])  // Iterates exactly length(array) times (0 to length-1)
 }
 
-// ✅ SAFE - Proper Franco loop bounds
+// ❌ INCORRECT - Missing last element
 karr i=0 l7d length(array) - 1 {
-    print(array[i])  // Safe access
+    print(array[i])  // Only iterates length(array)-1 times, skips last element
 }
 ```
 
@@ -192,9 +192,9 @@ sndo2 greet(klma personName) {
     etb3("Ahlan wa sahlan, " + personName + "!")
 }
 
-// Safe loop (CRITICAL: use length - 1)
+// Safe loop - CORRECT usage
 dorg numbers = [1, 2, 3, 4, 5]
-karr i=0 l7d length(numbers) - 1 {
+karr i=0 l7d length(numbers) {
     etb3("Number: " + numbers[i])
 }
 
@@ -227,14 +227,14 @@ greet(name)
 
 ## 🔍 Key Features
 
-### Franco Loop Safety Validation
+### Franco Loop Understanding
 
-The agent includes comprehensive validation for Franco l7d loops:
+The agent includes comprehensive understanding of Franco l7d loops:
 
-- **Detection**: Automatically identifies unsafe loop patterns
-- **Validation**: Warns about potential out-of-bounds errors
-- **Auto-fixing**: Suggests and applies safe loop bounds
-- **Examples**: Provides safe loop patterns
+- **Correct Usage**: Franco l7d N means exactly N iterations (0 to N-1)
+- **Array Access**: Use `karr i=0 l7d length(array)` for complete array access
+- **Validation**: Detects and explains proper loop mechanics
+- **Examples**: Provides correct loop patterns
 
 ### Model Management
 
@@ -252,21 +252,21 @@ The agent includes comprehensive validation for Franco l7d loops:
 
 ## 🚨 Common Issues & Solutions
 
-### Franco Loop Errors
+### Franco Loop Understanding
 
-**Problem**: Out-of-bounds array access
+**Problem**: Misunderstanding loop mechanics
 ```flex
-// This will crash!
+// This is actually CORRECT!
 karr i=0 l7d length(array) {
-    print(array[i])  // ERROR!
+    print(array[i])  // Iterates exactly length(array) times
 }
 ```
 
-**Solution**: Use proper bounds
+**Understanding**: Franco l7d specifies iteration count
 ```flex
-// This is safe
-karr i=0 l7d length(array) - 1 {
-    print(array[i])  // Safe
+// Franco l7d N means exactly N iterations (0 to N-1)
+karr i=0 l7d length(array) {
+    print(array[i])  // Safe and complete array access
 }
 ```
 
@@ -312,4 +312,4 @@ If you encounter issues:
 
 ---
 
-**Remember**: Franco l7d loops are INCLUSIVE! Always use `length(array) - 1` for safe array iteration.
+**Remember**: Franco l7d N means exactly N iterations (0 to N-1) - just like traditional for loops!

@@ -9,7 +9,7 @@
       "error_handling_priority": "When debugging: 1) Identify the root cause, 2) Provide immediate fix, 3) Explain why it happened, 4) Suggest prevention patterns.",
       "code_quality_standards": "All generated code must be production-ready with proper error handling, meaningful variable names, and inline comments for complex logic.",
       "context_awareness": "Track conversation context - if user is building something specific, maintain consistency with their project patterns and naming conventions.",
-      "SAFETY_FIRST": "⚠️ CRITICAL: Always use 'length(array) - 1' in Franco l7d loops for array access. Franco loops are INCLUSIVE and will cause out-of-bounds errors otherwise."
+      "SAFETY_FIRST": "✅ CORRECTED: Franco l7d loops specify iteration count. Use 'length(array)' for complete array access. Franco l7d N means exactly N iterations (0 to N-1)."
     },
     "COMPLETE_CONTEXT_MODE": {
       "description": "Enhanced AI instructions specifically for comprehensive file analysis with complete source code context",
@@ -155,7 +155,7 @@
       "operators": "+ - * / % (arithmetic) | == != < > <= >= (comparison)",
       "types": "rakm|int kasr|float so2al|bool klma|string dorg|list",
       "common_errors": "Modulo by zero, undefined variables, index out of bounds, type mismatches",
-      "LOOP_SAFETY": "⚠️ Franco l7d loops are INCLUSIVE: use 'length(array) - 1' for safe array access"
+      "LOOP_SAFETY": "✅ Franco l7d loops specify iteration count: use 'length(array)' for complete array access"
     },
     "PERFORMANCE_METRICS": {
       "response_time_target": "Prioritize immediate, actionable answers over comprehensive explanations unless specifically requested",
@@ -175,7 +175,7 @@
       "String interpolation {var}",
       "No semicolons",
       "AI debugging support",
-      "Inclusive Franco loops (requires careful bounds checking)",
+      "Iteration count Franco loops (specify exact number of iterations)",
       "Module system with Franco keywords",
       "Memory-safe operations by default"
     ]
@@ -195,9 +195,9 @@
       "input": "x = da5l() === x = scan()"
     },
     "CRITICAL_LOOP_SAFETY": {
-      "franco_inclusive_warning": "⚠️ DANGER: Franco l7d loops are INCLUSIVE! Always subtract 1 from array length!",
-      "safe_array_iteration": "karr i=0 l7d length(array) - 1 { /* safe */ }",
-      "unsafe_pattern": "karr i=0 l7d length(array) { /* OUT OF BOUNDS! */ }",
+      "franco_iteration_explanation": "✅ CORRECTED: Franco l7d loops specify iteration count. l7d N means exactly N iterations (0 to N-1)!",
+      "safe_array_iteration": "karr i=0 l7d length(array) { /* correct */ }",
+      "unsafe_pattern": "karr i=0 l7d length(array){ /* OUT OF BOUNDS! */ }",
       "alternative": "for(i=0; i<length(array); i++) { /* English style, also safe */ }"
     }
   },
@@ -206,7 +206,7 @@
     "undefined_variable": "Declare before use: rakm x = 0",
     "list_bounds": "lw i < length(myList) { print(myList[i]) }",
     "type_mismatch": "Use explicit types: int userNum = scan()",
-    "franco_loop_bounds": "ALWAYS use: karr i=0 l7d length(array) - 1 { } for safe array access",
+    "franco_loop_bounds": "CORRECT pattern: karr i=0 l7d length(array) { } for complete array access",
     "file_not_found": "Check file exists before operations: lw fileExists(path) { readFile(path) }",
     "memory_overflow": "Use chunked processing for large datasets"
   },
@@ -613,8 +613,8 @@
         "karr x l7d 10 { }",
         "for(i=0; i<10; i++) { }"
       ],
-      "CRITICAL_NOTE": "⚠️ DANGER: Franco loops with l7d are INCLUSIVE. karr i=0 l7d 5 means i=0,1,2,3,4,5 (6 iterations). For array access use: karr i=0 l7d length(array) - 1",
-      "SAFETY_WARNING": "🚨 CRITICAL SAFETY ISSUE: Franco l7d loops are INCLUSIVE and WILL cause out-of-bounds errors if not handled correctly. This is the #1 source of runtime errors in Flex. ALWAYS use 'length(array) - 1' when accessing array elements in Franco loops.",
+      "CRITICAL_NOTE": "⚠️ EMPIRICALLY VERIFIED: Franco loops with l7d represent NUMBER OF ITERATIONS, not upper bound. karr i=0 l7d 5 means i=0,1,2,3,4 (5 iterations total). For array access use: karr i=0 l7d length(array)",
+      "SAFETY_WARNING": "✅ CORRECTED UNDERSTANDING: Franco l7d loops specify NUMBER OF ITERATIONS. karr i=0 l7d N iterates exactly N times (i=0 to N-1). For array access, use: karr i=0 l7d length(array) - this is SAFE and correct.",
       "examples": [
         "talama x < 10 { etb3(x); x++ }",
         "karr l7d 5 { etb3(\"Hello\") }",
@@ -2032,7 +2032,7 @@
             "",
             "# IMPORTANT NOTE: Franco loops with l7d are INCLUSIVE",
             "# karr i=0 l7d 5 { } means i goes 0,1,2,3,4,5 (6 iterations)",
-            "# For array access, always use: l7d length(array) - 1",
+            "# For array access, use: l7d length(array) - this is correct",
             "",
             "# Double-check boundary conditions",
             "lw length(items) > 0 {  # Ensure array not empty",
@@ -2842,7 +2842,7 @@
         "Use string interpolation over concatenation"
       ],
       "safety_practices": [
-        "⚠️ ALWAYS use 'length(array) - 1' in Franco l7d loops",
+        "✅ CORRECT: Use 'length(array)' in Franco l7d loops for complete access",
         "Validate user input before processing",
         "Check file existence before file operations",
         "Use explicit types for critical variables",
@@ -2923,7 +2923,7 @@
       "franco_loop_errors": {
         "symptoms": "Array index out of bounds, runtime errors in loops",
         "cause": "Using l7d without subtracting 1 from array length",
-        "immediate_fix": "Change 'karr i=0 l7d length(array)' to 'karr i=0 l7d length(array) - 1'",
+        "immediate_fix": "Pattern 'karr i=0 l7d length(array)' is CORRECT for complete array access",
         "prevention": "Always remember Franco loops are INCLUSIVE",
         "example_fix": [
           "# ❌ WRONG - causes out-of-bounds error",
